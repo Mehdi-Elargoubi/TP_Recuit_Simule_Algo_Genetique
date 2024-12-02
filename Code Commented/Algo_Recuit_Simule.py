@@ -1,111 +1,144 @@
 import random  # Module pour générer des nombres aléatoires
-import math  # Module pour utiliser des fonctions mathématiques comme exp()
 
-# Génération de l'état initial
+# Génération d'un état initial
 def etatInitial(N):
     """
-    Génère un état aléatoire pour un échiquier de taille N x N.
-    Chaque colonne contient une reine placée dans une ligne aléatoire.
+    Crée un état aléatoire où chaque colonne a une reine dans une ligne aléatoire.
     """
-    etat = []  # Liste qui contiendra les positions des reines
-    for i in range(N):  # Boucle pour chaque colonne
-        etat.append(random.randint(0, N - 1))  # Place une reine dans une ligne aléatoire
-    return etat  # Retourne l'état généré
+    # Retourne une liste de N entiers. Chaque entier représente la ligne où se trouve la reine dans une colonne donnée.
+    return [random.randint(0, N - 1) for _ in range(N)]
 
-# Affichage de l'échiquier
-def afficher(etat):
-    """
-    Affiche graphiquement un échiquier à partir d'une liste de positions.
-    Chaque valeur dans la liste représente la ligne où se trouve la reine dans une colonne donnée.
-    """
-    N = len(etat)  # Taille de l'échiquier (nombre de colonnes)
-    for i in range(N):  # Boucle pour chaque ligne
-        for j in range(N):  # Boucle pour chaque colonne
-            if etat[j] == i:  # Si une reine est sur cette position
-                print("|Q", end="")  # Affiche une reine 'Q'
-            else:
-                print("| ", end="")  # Sinon, affiche une case vide
-        print("|")  # Passe à la ligne suivante
-
-# Fonction pour évaluer un état
+# Évalue le nombre de conflits
 def evaluer(etat):
     """
-    Calcule le nombre de conflits dans un état donné.
-    Les conflits se produisent si deux reines sont :
-    - Sur la même ligne
-    - Sur la même diagonale
+    Compte le nombre de conflits dans un état donné.
     """
-    eval = 0  # Initialise le nombre de conflits à 0
+    conflits = 0  # Initialise le compteur de conflits à 0
     N = len(etat)  # Taille de l'échiquier
-    for i in range(N):  # Boucle pour la première reine
-        for j in range(i + 1, N):  # Boucle pour la deuxième reine (évite de compter deux fois)
-            if etat[i] == etat[j] or abs(i - j) == abs(etat[i] - etat[j]):  
-                # Même ligne ou même diagonale
-                eval += 1  # Augmente le nombre de conflits
-    return eval  # Retourne le nombre total de conflits
+    # Compare chaque reine avec toutes les reines suivantes
+    for i in range(N):
+        for j in range(i + 1, N):
+            # Un conflit existe si deux reines sont sur la même ligne ou sur une diagonale
+            if etat[i] == etat[j] or abs(i - j) == abs(etat[i] - etat[j]):
+                conflits += 1  # Incrémente le compteur de conflits
+    return conflits
 
-# Génération d'un voisin
-def voisin(etat):
+# Fonction de fitness
+def fitness(etat):
     """
-    Génère un état voisin en modifiant aléatoirement la position d'une reine.
+    Retourne un score basé sur le nombre de conflits.
+    Un état parfait (sans conflit) a un fitness maximal.
     """
-    voisin = etat[:]  # Copie de l'état actuel
+    # Fitness est calculé comme l'inverse du nombre de conflits (plus c'est élevé, mieux c'est)
+    return 1 / (1 + evaluer(etat))
+
+# Génère une population initiale
+def population_initiale(taille_population, N):
+    """
+    Crée une population initiale de taille donnée pour un échiquier N x N.
+    """
+    population = []  # Liste pour stocker la population
+    # Génère 'taille_population' individus aléatoires
+    for i in range(taille_population):
+        population.append(etatInitial(N))  # Ajoute un état généré aléatoirement
+    return population
+
+# Sélectionne un individu avec sélection par roulette
+def selection(population):
+    """
+    Sélectionne un individu de la population proportionnellement à son fitness.
+    """
+    total = 0  # Initialisation de la somme totale des fitness
+    for solution in population:
+        total += fitness(solution)  # Calcule la somme totale des fitness
+    r = random.uniform(0, total)  # Tire un nombre aléatoire entre 0 et la somme totale
+    cumulative_fitness = 0  # Initialisation de la somme cumulative
+    for solution in population:
+        cumulative_fitness += fitness(solution)  # Ajoute le fitness de l'individu courant
+        if cumulative_fitness >= r:  # Si la somme cumulative dépasse 'r', on sélectionne cet individu
+            return solution
+
+# Effectue un croisement entre deux parents
+def croisement(parent1, parent2):
+    """
+    Réalise un croisement entre deux parents pour produire un enfant.
+    Utilise un point de croisement unique.
+    """
+    # Point de croisement choisi aléatoirement entre 1 et len(parent1) - 1
+    point = random.randint(1, len(parent1) - 1)
+    # Combine les gènes du parent1 avant le point avec ceux du parent2 après le point
+    enfant = parent1[:point] + parent2[point:]
+    return enfant
+
+# Applique une mutation sur un individu
+def mutation(etat):
+    """
+    Applique une mutation aléatoire à un individu en modifiant la position d'une reine.
+    """
     col = random.randint(0, len(etat) - 1)  # Choisit une colonne au hasard
-    voisin[col] = random.randint(0, len(etat) - 1)  # Déplace la reine dans une autre ligne
-    return voisin  # Retourne le nouvel état
+    etat[col] = random.randint(0, len(etat) - 1)  # Change la ligne de la reine dans cette colonne
+    return etat
 
-# Algorithme de recuit simulé
-def recuit_simule(N, T0, refroidissement, temperature_min=0.01):
+# Algorithme génétique
+def algorithme_genetique(N, taille_population, nombre_generations, taux_mutation):
     """
-    Implémente l'algorithme du recuit simulé pour résoudre le problème des N-Reines.
+    Implémente l'algorithme génétique pour résoudre le problème des N-Reines.
     
     Arguments :
-    - N : Taille de l'échiquier (N x N)
-    - T0 : Température initiale
-    - refroidissement : Facteur de diminution de la température
-    - temperature_min : Température minimale pour arrêter l'algorithme
-    """
-    # Initialisation de l'état et de la température
-    n = etatInitial(N)  # Génère un état initial aléatoire
-    print("État initial :")
-    afficher(n)  # Affiche l'état initial
-    print(f"Conflits initiaux : {evaluer(n)}\n")  # Affiche le nombre de conflits initiaux
+    - N : Taille de l'échiquier
+    - taille_population : Nombre d'individus dans la population
+    - nombre_generations : Nombre maximal de générations
+    - taux_mutation : Probabilité de mutation
     
-    t = T0  # Définit la température initiale
+    Retourne :
+    - La meilleure solution trouvée
+    """
+    # Génère la population initiale
+    population = population_initiale(taille_population, N)
 
-    while t > temperature_min:  # Continue tant que la température n'est pas trop basse
-        n_prime = voisin(n)  # Génère un voisin aléatoire
-        delta_E = evaluer(n_prime) - evaluer(n)  # Calcule la variation d'énergie (changement de conflits)
+    # Pour chaque génération
+    for generation in range(nombre_generations):
+        nouvelle_population = []  # Liste pour stocker la nouvelle population
 
-        # Décide si on accepte l'état voisin
-        if delta_E < 0:  # Si le voisin est meilleur (moins de conflits)
-            n = n_prime  # Accepte l'état voisin
-        else:  # Sinon, accepte avec une certaine probabilité
-            if random.random() < math.exp(-delta_E / t):  # Probabilité décroissante avec la température
-                n = n_prime  # Accepte l'état voisin malgré qu'il soit pire
+        # Crée des enfants à partir de paires de parents
+        for i in range(taille_population // 2):  # Divise la population en paires
+            parent1 = selection(population)  # Sélectionne le premier parent
+            parent2 = selection(population)  # Sélectionne le second parent
+            enfant = croisement(parent1, parent2)  # Produit un enfant par croisement
 
-        t *= refroidissement  # Réduit la température selon le facteur de refroidissement
+            # Avec une probabilité 'taux_mutation', applique une mutation à l'enfant
+            if random.random() < taux_mutation:
+                enfant = mutation(enfant)
 
-        # Affiche les informations sur l'état courant
-        print(f"Température: {t:.2f}, Conflits: {evaluer(n)}")
+            # Ajoute les parents et l'enfant à la nouvelle population
+            nouvelle_population.extend([parent1, parent2, enfant])
 
-        if evaluer(n) == 0:  # Si une solution sans conflits est trouvée
-            break  # Arrête l'algorithme
+        # Remplace l'ancienne population par la nouvelle
+        population = nouvelle_population
 
-    return n  # Retourne l'état solution trouvé
+        # Cherche la meilleure solution dans la population actuelle
+        meilleure_solution = max(population, key=fitness)  # Individu avec le meilleur fitness
+        print(f"Génération {generation + 1}: Conflits = {evaluer(meilleure_solution)}")
 
-# Exécution principale
+        # Si une solution parfaite est trouvée, arrête l'algorithme
+        if evaluer(meilleure_solution) == 0:
+            print("Solution parfaite trouvée !")
+            return meilleure_solution
+
+    # Retourne la meilleure solution de la dernière population
+    return max(population, key=fitness)
+
+# Test de l'algorithme
 if __name__ == "__main__":
-    """
-    Définit les paramètres et exécute l'algorithme de recuit simulé.
-    """
+    # Paramètres du problème
     N = 8  # Taille de l'échiquier
-    T0 = 100  # Température initiale
-    refroidissement = 0.99  # Facteur de refroidissement
+    taille_population = 8  # Nombre d'individus dans la population
+    nombre_generations = 100  # Nombre maximal de générations
+    taux_mutation = 0.1  # Probabilité de mutation
 
-    # Lance l'algorithme et récupère la solution
-    solution = recuit_simule(N, T0, refroidissement)
+    # Exécution de l'algorithme génétique
+    solution = algorithme_genetique(N, taille_population, nombre_generations, taux_mutation)
 
-    # Affiche la solution trouvée
-    print("Solution trouvée :")
-    afficher(solution)
+    # Affiche la meilleure solution trouvée et le nombre de conflits
+    print("Meilleure solution trouvée :", solution)
+    print("Conflits :", evaluer(solution))
