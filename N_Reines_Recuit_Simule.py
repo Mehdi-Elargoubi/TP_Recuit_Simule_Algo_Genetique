@@ -76,29 +76,10 @@ def mutation(etat):
 
 # Algorithme génétique
 def algorithme_genetique(N, taille_population, nombre_generations, taux_mutation):
-    """
-    Implémente l'algorithme génétique pour résoudre le problème des N-Reines.
-    
-    Arguments :
-    - N : Taille de l'échiquier
-    - taille_population : Nombre d'individus dans la population
-    - nombre_generations : Nombre maximal de générations
-    - taux_mutation : Probabilité de mutation
-    
-    Retourne :
-    - La meilleure solution trouvée
-    """
     # Initialisation de la population
     population = population_initiale(taille_population, N)
-
-    # Afficher la population initiale
-    print("Population initiale :")
-    for individu in population:
-        print(f"Individu : {individu}, Conflits : {evaluer(individu)}")
-    
-    # Première génération
-    for generation in range(1):  # Affiche seulement la première génération
-        print(f"\n--- Génération {generation + 1} ---")
+    print(population)
+    for generation in range(nombre_generations):
         nouvelle_population = []
 
         for i in range(taille_population // 2):  # On crée des paires de parents
@@ -111,13 +92,9 @@ def algorithme_genetique(N, taille_population, nombre_generations, taux_mutation
 
         population = nouvelle_population  # Remplace l'ancienne population par la nouvelle
 
-        # Affiche les informations sur la meilleure solution de la première génération
+        # Affiche les informations sur la meilleure solution actuelle
         meilleure_solution = max(population, key=fitness)
-        print("\nPopulation après évolution (génération 1) :")
-        for individu in population:
-            print(f"Individu : {individu}, Conflits : {evaluer(individu)}")
-
-        print(f"Génération 1: Meilleure solution avec {evaluer(meilleure_solution)} conflits")
+        print(f"Génération {generation + 1}: Conflits = {evaluer(meilleure_solution)}")
 
         # Si une solution parfaite est trouvée, on arrête
         if evaluer(meilleure_solution) == 0:
@@ -127,14 +104,13 @@ def algorithme_genetique(N, taille_population, nombre_generations, taux_mutation
     # Retourne le meilleur individu de la population finale
     return max(population, key=fitness)
 
-
 # Test de l'algorithme
 if __name__ == "__main__":
-    N = 8  # Taille de l'échiquier
-    taille_population = 8  # Taille de la population
-    nombre_generations = 100  # Nombre maximal de générations
+    N = 4  # Taille de l'échiquier
+    taille_population = 4  # Taille de la population
+    nombre_generations = 500  # Nombre maximal de générations
     taux_mutation = 0.1  # Probabilité de mutation
 
     solution = algorithme_genetique(N, taille_population, nombre_generations, taux_mutation)
-    print("\nMeilleure solution trouvée :", solution)
+    print("Meilleure solution trouvée :", solution)
     print("Conflits :", evaluer(solution))
